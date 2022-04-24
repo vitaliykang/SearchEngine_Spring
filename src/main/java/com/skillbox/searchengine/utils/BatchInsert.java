@@ -1,4 +1,4 @@
-package com.skillbox.searchengine;
+package com.skillbox.searchengine.utils;
 
 import com.skillbox.searchengine.entity.BaseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,13 +17,24 @@ public class BatchInsert<T extends BaseEntity> {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public void saveBatch(List<BaseEntity> batch) {
+    public void save() {
+        List<List<BaseEntity>> list = new ArrayList<>(splitList());
+        list.forEach(this::saveBatch);
+    }
+
+    private void saveBatch(List<BaseEntity> batch) {
         StringBuilder sqlBuilder = new StringBuilder("INSERT INTO ");
+        sqlBuilder.append(batch.get(0).getSqlParams());
+
+        batch.forEach(entry -> sqlBuilder.append(entry.getFieldsAsSQL()).append(','));
+        sqlBuilder.deleteCharAt(sqlBuilder.length() - 1);
+
+        jdbcTemplate.execute(sqlBuilder.toString());
     }
 
     //splits this.list into batches of size set by BATCH_SIZE
-    private List<List<T>> splitList() {
-        List<List<T>> result = new ArrayList<>();
+    private List<List<BaseEntity>> splitList() {
+        List<List<BaseEntity>> result = new ArrayList<>();
         if (list.size() > BATCH_SIZE) {
             int count = list.size() % BATCH_SIZE == 0 ?
                     list.size() / BATCH_SIZE :

@@ -7,7 +7,7 @@ import javax.persistence.*;
 @Entity
 @Table(name = "page")
 public class Page extends BaseEntity{
-    private static final String SQL_PARAMS = "page (code, content, path) ";
+    private static final String SQL_PARAMS = "page (code, content, path) VALUES ";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,7 +31,7 @@ public class Page extends BaseEntity{
 
     @Override
     public String getFieldsAsSQL() {
-        return String.format("VALUES (%d, '%s', '%s')", code, content, path);
+        return String.format("(%d, '%s', '%s')", code, content, path);
     }
 
     //getters and setters
