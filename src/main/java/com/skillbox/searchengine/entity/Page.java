@@ -1,10 +1,14 @@
 package com.skillbox.searchengine.entity;
 
+import lombok.Getter;
+
 import javax.persistence.*;
 
 @Entity
 @Table(name = "page")
-public class Page {
+public class Page extends BaseEntity{
+    private static final String SQL_PARAMS = "page (code, content, path) ";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -20,6 +24,17 @@ public class Page {
     @Column(name = "content", nullable = false)
     private String content;
 
+    @Override
+    public String getSqlParams() {
+        return SQL_PARAMS;
+    }
+
+    @Override
+    public String getFieldsAsSQL() {
+        return String.format("VALUES (%d, '%s', '%s')", code, content, path);
+    }
+
+    //getters and setters
     public String getContent() {
         return content;
     }

@@ -13,6 +13,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -21,22 +22,20 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;
 
 public class Crawler extends RecursiveAction {
-    @Getter
     private static HashSet<String> allLinks = new HashSet<>();
+    @Getter @Setter
+    private static List<Page> pages = new ArrayList<>();
+
     @Getter @Setter
     private List<String> initAddress;
     @Getter @Setter
     private List<String> children;
-
-    //test
     private PageRepository repository;
 
     public Crawler(List<String> initAddress, PageRepository repository){
         this.initAddress = initAddress;
         children = new ArrayList<>();
         allLinks.addAll(initAddress);
-
-        //test
         this.repository = repository;
     }
 
@@ -55,7 +54,10 @@ public class Crawler extends RecursiveAction {
 
                 //main action
                 Document doc = connection.get();
-                int statusCode = connection.execute().statusCode();
+                Connection.Response response = connection.execute();
+                int statusCode = response.statusCode();
+
+                linksOnPage = doc.select("a[href]");
 
                 //New page database entry
                 Page page = new Page();
@@ -68,27 +70,9 @@ public class Crawler extends RecursiveAction {
 
                 page.setPath(path);
                 page.setCode(statusCode);
-                page.setContent(connection.execute().body());
-                //here
-                repository.save(page);
+                page.setContent(response.body());
+                pages.add(page);
 
-                linksOnPage = doc.select("a[href]");
-
-                //page main info extraction
-                Session session = MySQLConnection.getSessionFactory().openSession();
-                Transaction transaction = session.beginTransaction();
-                List<Field> fields = session.createQuery("from Field", Field.class).getResultList();
-                transaction.commit();
-
-                //title & body
-                fields.forEach(field -> {
-                   Elements elements = doc.select(field.getSelector());
-                   elements.forEach(element -> {
-                      String content = element.text();
-                   });
-                });
-
-                session.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
