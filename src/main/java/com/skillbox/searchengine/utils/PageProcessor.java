@@ -1,13 +1,18 @@
-package com.skillbox.searchengine;
+package com.skillbox.searchengine.utils;
 
+import com.skillbox.searchengine.entity.Field;
+import com.skillbox.searchengine.entity.Lemma;
+import com.skillbox.searchengine.repository.CustomRepository;
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.WrongCharaterException;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.util.*;
 
-public class TextAnalyzer {
+public class PageProcessor {
     private static LuceneMorphology morphology;
 
     static {
@@ -18,26 +23,60 @@ public class TextAnalyzer {
         }
     }
 
-    private TextAnalyzer(){};
+    private PageProcessor(){};
+
+
+    /**
+     * Generates a hash map containing all lemmas and their respective rank
+     * @param document Jsoup document
+     * @return Map<Lemma, Double>
+     */
+    public static Map<Lemma, Double> generateMap(Document document) {
+        Map<Lemma, Double> result = new HashMap<>();
+        List<Field> fields = CustomRepository.findAll(Field.class);
+
+        fields.forEach(field -> {
+            Elements elements = document.select(field.getSelector());
+            Map<Lemma, Integer> lemmaCount = countLemmas(elements.text());
+
+            lemmaCount.forEach((lemma, count) -> {
+                double rank = count * field.getWeight();
+                Double oldRank = result.putIfAbsent(lemma, rank);
+                if (oldRank != null) {
+                    result.replace(lemma, rank + oldRank);
+                }
+            });
+        });
+
+        return result;
+    }
 
     /**
      * Counts the number of unique lemmas in the text and returns the result as a hash map
      * @param text in Russian language
      * @return map of lexemes in the text
      */
-    public static Map<String, Integer> parseText(String text) {
-        Map<String, Integer> result = new HashMap<>();
+    private static Map<Lemma, Integer> countLemmas(String text) {
+        Map<Lemma, Integer> result = new HashMap<>();
         String[] textArray = text.split(" ");
 
         for (int i = 0; i < textArray.length; i++) {
+            //making sure that the word length is greater than 1 char
+            if (textArray[i].length() <= 1) {
+                continue;
+            }
+
             List<String> morphInfo = getMorphInfo(textArray[i]);
             for (String info : morphInfo) {
                 if (isWord(info)) {
                     int index = info.indexOf('|');
                     String word = index == -1 ? info : info.substring(0, index);
-                    Integer count = result.putIfAbsent(word, 1);
+                    Lemma lemma = new Lemma();
+                    lemma.setLemma(word);
+                    lemma.setFrequency(1);
+                    Integer count = result.putIfAbsent(lemma, 1);
                     if (count != null) {
-                        result.replace(word, count + 1);
+                        result.replace(lemma, count + 1);
                     }
                 }
             }

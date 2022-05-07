@@ -6,7 +6,7 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "page")
-public class Page extends BaseEntity{
+public class Page implements BaseEntity{
     private static final String SQL_PARAMS = "page (code, content, path) VALUES ";
 
     @Id
@@ -23,16 +23,6 @@ public class Page extends BaseEntity{
     @Lob
     @Column(name = "content", nullable = false)
     private String content;
-
-    @Override
-    public String getSqlParams() {
-        return SQL_PARAMS;
-    }
-
-    @Override
-    public String getFieldsAsSQL() {
-        return String.format("(%d, '%s', '%s')", code, content, path);
-    }
 
     //getters and setters
     public String getContent() {
@@ -65,5 +55,10 @@ public class Page extends BaseEntity{
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    @Override
+    public void printInfo() {
+        System.out.println(path);
     }
 }

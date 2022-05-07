@@ -1,42 +1,39 @@
-package com.skillbox.searchengine;
+package com.skillbox.searchengine.utils;
 
 import com.skillbox.searchengine.entity.Field;
+import com.skillbox.searchengine.entity.Index;
+import com.skillbox.searchengine.entity.Lemma;
 import com.skillbox.searchengine.entity.Page;
-import com.skillbox.searchengine.repository.PageRepository;
+import com.skillbox.searchengine.repository.CustomRepository;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.Session;
-import org.hibernate.Transaction;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 
-import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;
 
+import static com.skillbox.searchengine.utils.PageProcessor.generateMap;
+
 public class Crawler extends RecursiveAction {
     private static HashSet<String> allLinks = new HashSet<>();
-    @Getter @Setter
-    private static List<Page> pages = new ArrayList<>();
 
     @Getter @Setter
     private List<String> initAddress;
     @Getter @Setter
     private List<String> children;
-    private PageRepository repository;
+    private List<Field> fields;
 
-    public Crawler(List<String> initAddress, PageRepository repository){
+    public Crawler(List<String> initAddress){
         this.initAddress = initAddress;
         children = new ArrayList<>();
         allLinks.addAll(initAddress);
-        this.repository = repository;
+        fields = CustomRepository.findAll(Field.class);
     }
 
     //main action
@@ -62,16 +59,21 @@ public class Crawler extends RecursiveAction {
                 //New page database entry
                 Page page = new Page();
 
-                int index = 0;
-                for (int i = 0; i < 3; i++) {
-                    index = address.indexOf('/', index + 1);
-                }
-                String path = address.substring(index);
+                String path = extractPath(address);
 
+                System.out.println(address);
                 page.setPath(path);
                 page.setCode(statusCode);
                 page.setContent(response.body());
-                pages.add(page);
+                CustomRepository.save(page);
+
+                //extracting lemmas from given fields and saving them in repo
+                Map<Lemma, Double> lemmaMap = PageProcessor.generateMap(doc);
+                Set<Lemma> lemmaSet = lemmaMap.keySet();
+                CustomRepository.saveAll(lemmaSet);
+
+                //creating index entries and saving them in repo
+
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -87,8 +89,6 @@ public class Crawler extends RecursiveAction {
                             && !childAddress.startsWith("https://skillbox.ru/media/")
                             && ( childAddress.endsWith("/") || childAddress.endsWith(".html") )) {
 
-                        System.out.println(childAddress);
-
                         try {
                             Thread.sleep(500);
                         } catch (InterruptedException e) {
@@ -101,6 +101,18 @@ public class Crawler extends RecursiveAction {
                 });
             }
         });
+    }
+
+    /**
+     *Extracts path from the provided web address
+     */
+    private String extractPath(String address) {
+        int index = 0;
+        for (int i = 0; i < 3; i++) {
+            index = address.indexOf('/', index + 1);
+        }
+        String path = address.substring(index);
+        return path;
     }
 
     @Override
@@ -122,11 +134,11 @@ public class Crawler extends RecursiveAction {
         List<Crawler> subtasks = new ArrayList<>();
         int half = initAddress.size() / 2;
 
-        Crawler fetcher1 = new Crawler(initAddress.subList(0, half), repository);
-        Crawler fetcher2 = new Crawler(initAddress.subList(half, initAddress.size()), repository);
+        Crawler crawler1 = new Crawler(initAddress.subList(0, half));
+        Crawler crawler2 = new Crawler(initAddress.subList(half, initAddress.size()));
 
-        subtasks.add(fetcher1);
-        subtasks.add(fetcher2);
+        subtasks.add(crawler1);
+        subtasks.add(crawler2);
 
         return subtasks;
     }

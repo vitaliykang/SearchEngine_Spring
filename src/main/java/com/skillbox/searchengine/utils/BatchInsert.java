@@ -1,40 +1,41 @@
 package com.skillbox.searchengine.utils;
 
 import com.skillbox.searchengine.entity.BaseEntity;
+import com.skillbox.searchengine.entity.BatchSavable;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class BatchInsert<T extends BaseEntity> {
-    private static final int BATCH_SIZE = 30;
+public class BatchInsert<T extends BatchSavable> {
+    private static final int BATCH_SIZE = 1;
 
-    private List<BaseEntity> list;
-    private JdbcTemplate jdbcTemplate;
+    //todo rewrite batch insert
+    public BatchInsert() {
 
-    public BatchInsert(List<BaseEntity> list, JdbcTemplate jdbcTemplate) {
-        this.list = list;
-        this.jdbcTemplate = jdbcTemplate;
     }
 
-    public void save() {
-        List<List<BaseEntity>> list = new ArrayList<>(splitList());
-        list.forEach(this::saveBatch);
+    /**
+     * Saves this.list in batches of size set by BATCH_SIZE.
+     */
+    public void save(List<T> list) {
+        List<List<T>> batches = new ArrayList<>(splitList(list));
+        batches.forEach(this::saveBatch);
     }
 
-    private void saveBatch(List<BaseEntity> batch) {
+    private void saveBatch(List<T> batch) {
         StringBuilder sqlBuilder = new StringBuilder("INSERT INTO ");
         sqlBuilder.append(batch.get(0).getSqlParams());
 
         batch.forEach(entry -> sqlBuilder.append(entry.getFieldsAsSQL()).append(','));
         sqlBuilder.deleteCharAt(sqlBuilder.length() - 1);
 
-        jdbcTemplate.execute(sqlBuilder.toString());
+//        jdbcTemplate.execute(sqlBuilder.toString());
     }
 
     //splits this.list into batches of size set by BATCH_SIZE
-    private List<List<BaseEntity>> splitList() {
-        List<List<BaseEntity>> result = new ArrayList<>();
+    private List<List<T>> splitList(List<T> list) {
+        List<List<T>> result = new ArrayList<>();
         if (list.size() > BATCH_SIZE) {
             int count = list.size() % BATCH_SIZE == 0 ?
                     list.size() / BATCH_SIZE :

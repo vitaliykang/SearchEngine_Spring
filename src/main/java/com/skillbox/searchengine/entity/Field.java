@@ -4,7 +4,7 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "field")
-public class Field {
+public class Field implements BaseEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -53,5 +53,10 @@ public class Field {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    @Override
+    public void printInfo() {
+        System.out.printf("%s - %f%n", selector, weight);
     }
 }
