@@ -6,8 +6,8 @@ import lombok.Setter;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "`index`")
-public class Index implements BaseEntity {
+@Table(name = "website_index")
+public class WebsiteIndex implements BaseEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
@@ -15,15 +15,15 @@ public class Index implements BaseEntity {
 
     @Getter @Setter
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "page_id")
+    @JoinColumn(name = "page_id", nullable = false)
     private Page page;
 
     @Getter @Setter
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "lemma_id")
+    @JoinColumn(name = "lemma_id", nullable = false)
     private Lemma lemma;
 
-    @Column(name = "rank", nullable = false)
+    @Column(name = "lemma_rank", nullable = false)
     private Double rank;
 
     public Integer getId() {
@@ -42,8 +42,4 @@ public class Index implements BaseEntity {
         this.rank = rank;
     }
 
-    @Override
-    public void printInfo() {
-        System.out.printf("%s - %f%n", lemma.getLemma(), rank);
-    }
 }

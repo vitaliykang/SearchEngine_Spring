@@ -114,13 +114,13 @@ public class PageProcessor {
         try {
             result = morphology.getMorphInfo(word);
         } catch (WrongCharaterException e) {
-            //if exception is thrown, will try to remove the last char in case if it is a punctuation character
-            word = word.substring(0, word.length() - 1);
-
+            //if word contains non-alphanumeric characters, remove them and process the word again
             try {
+                word = word.replaceAll("[^a-zA-Zа-яА-Я0-9]", "");
                 result = morphology.getMorphInfo(word);
             } catch (WrongCharaterException e2) {
-                //in case of the second exception will return a list containing the original word
+                //if the exception is thrown for the second time, the word contains latin characters.
+                //return the word as it is
                 result.add(originalWord);
             }
         }

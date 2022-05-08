@@ -2,6 +2,10 @@ package com.skillbox.searchengine.repository;
 
 import com.skillbox.searchengine.entity.BaseEntity;
 import com.skillbox.searchengine.entity.BatchSavable;
+import com.skillbox.searchengine.entity.Lemma;
+import com.skillbox.searchengine.entity.Unique;
+import lombok.Getter;
+import org.hibernate.Criteria;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -10,11 +14,13 @@ import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.*;
 
 public class CustomRepository {
     private static final int BATCH_SIZE = 30;
 
+    @Getter
     private static SessionFactory sessionFactory;
     static {
         StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
@@ -29,19 +35,41 @@ public class CustomRepository {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
 
-        String query = String.format("DROP TABLE IF EXISTS %s", tClass.getSimpleName().toLowerCase(Locale.ROOT));
+        String tableName = tClass.getSimpleName().toLowerCase(Locale.ROOT);
+        if (tableName.equals("index")) {
+            tableName = String.format("`%s`", tableName);
+        }
+
+        String query = String.format("DROP TABLE IF EXISTS %s", tableName);
         session.createSQLQuery(query).executeUpdate();
 
         transaction.commit();
         session.close();
     }
 
-    public static <T extends BaseEntity> void save(T t) {
+    public static <T extends BaseEntity> void update(T t) {
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+
+        session.update(t);
+
+        transaction.commit();
+        session.close();
+    }
+
+    public static synchronized  <T extends BaseEntity> void save(T t) {
         Session session = sessionFactory.openSession();
         Transaction transaction = session.beginTransaction();
         session.save(t);
         System.out.print("Saving ");
-        t.printInfo();
+        transaction.commit();
+        session.close();
+    }
+
+    public static synchronized  <T extends Unique> void saveUnique(T t) throws SQLIntegrityConstraintViolationException{
+        Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
+        session.save(t);
         transaction.commit();
         session.close();
     }

@@ -27,7 +27,7 @@
         <mapping class="com.skillbox.searchengine.entity.Field"></mapping>
         <mapping class="com.skillbox.searchengine.entity.Lemma"></mapping>
         <mapping class="com.skillbox.searchengine.entity.Page"></mapping>
-        <mapping class="com.skillbox.searchengine.entity.Index"></mapping>
+        <mapping class="com.skillbox.searchengine.entity.WebsiteIndex"></mapping>
 
     </session-factory>
 </hibernate-configuration>

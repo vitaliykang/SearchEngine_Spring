@@ -57,8 +57,4 @@ public class Page implements BaseEntity{
         this.id = id;
     }
 
-    @Override
-    public void printInfo() {
-        System.out.println(path);
-    }
 }

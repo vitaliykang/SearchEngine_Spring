@@ -4,7 +4,7 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "lemma")
-public class Lemma implements BaseEntity, BatchSavable{
+public class Lemma implements BaseEntity, BatchSavable, Unique{
     private static final String SQL_PARAMS = "lemma (frequency, lemma) VALUES ";
     private static final String ENDING = " ON DUPLICATE KEY UPDATE frequency = frequency + 1";
 
@@ -74,7 +74,7 @@ public class Lemma implements BaseEntity, BatchSavable{
     }
 
     @Override
-    public void printInfo() {
-        System.out.println(lemma);
+    public String toString() {
+        return String.format("Lemma info: %s - %d", lemma, frequency);
     }
 }

@@ -54,9 +54,4 @@ public class Field implements BaseEntity{
     public void setId(Integer id) {
         this.id = id;
     }
-
-    @Override
-    public void printInfo() {
-        System.out.printf("%s - %f%n", selector, weight);
-    }
 }

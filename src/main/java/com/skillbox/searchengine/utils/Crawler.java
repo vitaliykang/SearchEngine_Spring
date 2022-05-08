@@ -1,12 +1,15 @@
 package com.skillbox.searchengine.utils;
 
 import com.skillbox.searchengine.entity.Field;
-import com.skillbox.searchengine.entity.Index;
 import com.skillbox.searchengine.entity.Lemma;
 import com.skillbox.searchengine.entity.Page;
+import com.skillbox.searchengine.entity.WebsiteIndex;
 import com.skillbox.searchengine.repository.CustomRepository;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -17,8 +20,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;
-
-import static com.skillbox.searchengine.utils.PageProcessor.generateMap;
 
 public class Crawler extends RecursiveAction {
     private static HashSet<String> allLinks = new HashSet<>();
@@ -69,10 +70,37 @@ public class Crawler extends RecursiveAction {
 
                 //extracting lemmas from given fields and saving them in repo
                 Map<Lemma, Double> lemmaMap = PageProcessor.generateMap(doc);
-                Set<Lemma> lemmaSet = lemmaMap.keySet();
-                CustomRepository.saveAll(lemmaSet);
+                lemmaMap.forEach((lemma, rank) -> {
+                    System.out.println(lemma);
+                    WebsiteIndex index = new WebsiteIndex();
 
-                //creating index entries and saving them in repo
+                    index.setRank(rank);
+                    index.setLemma(lemma);
+                    index.setPage(page);
+
+                    try {
+                        CustomRepository.saveUnique(lemma);
+                    } catch (Exception exception) {
+                        //increment frequency and update lemma if it already exists
+                        int newFrequency = lemma.getFrequency();
+                        String param = lemma.getLemma();
+
+                        Session session = CustomRepository.getSessionFactory().openSession();
+                        Transaction transaction = session.beginTransaction();
+                        Query<Lemma> query = session.createQuery("From Lemma l where l.lemma =: param");
+                        query.setParameter("lemma", param);
+                        Lemma oldLemma = query.uniqueResult();
+                        transaction.commit();
+
+                        transaction = session.beginTransaction();
+                        oldLemma.setFrequency(oldLemma.getFrequency() + newFrequency);
+                        session.update(oldLemma);
+                        transaction.commit();
+
+                        session.close();
+                    }
+                    CustomRepository.save(index);
+                });
 
 
             } catch (IOException e) {
