@@ -12,7 +12,7 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.util.*;
 
-public class PageProcessor {
+public class LemmaCounter {
     private static LuceneMorphology morphology;
 
     static {
@@ -23,7 +23,7 @@ public class PageProcessor {
         }
     }
 
-    private PageProcessor(){};
+    private LemmaCounter(){};
 
 
     /**
@@ -56,7 +56,7 @@ public class PageProcessor {
      * @param text in Russian language
      * @return map of lexemes in the text
      */
-    private static Map<Lemma, Integer> countLemmas(String text) {
+    public static Map<Lemma, Integer> countLemmas(String text) {
         Map<Lemma, Integer> result = new HashMap<>();
         String[] textArray = text.split(" ");
 
@@ -109,19 +109,20 @@ public class PageProcessor {
     private static List<String> getMorphInfo(String word) {
         List<String> result = new ArrayList<>();
         word = word.toLowerCase(Locale.ROOT);
-        String originalWord = word;
 
         try {
             result = morphology.getMorphInfo(word);
         } catch (WrongCharaterException e) {
             //if word contains non-alphanumeric characters, remove them and process the word again
             try {
-                word = word.replaceAll("[^a-zA-Zа-яА-Я0-9]", "");
-                result = morphology.getMorphInfo(word);
+                word = word.replaceAll("[^a-zA-Zа-яА-Я0-9-]", "");
+                if (word.length() > 0) {
+                    result = morphology.getMorphInfo(word);
+                }
             } catch (WrongCharaterException e2) {
                 //if the exception is thrown for the second time, the word contains latin characters.
                 //return the word as it is
-                result.add(originalWord);
+                result.add(word);
             }
         }
         return result;

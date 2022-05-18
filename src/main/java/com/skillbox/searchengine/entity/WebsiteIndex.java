@@ -19,9 +19,8 @@ public class WebsiteIndex implements BaseEntity{
     private Page page;
 
     @Getter @Setter
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "lemma_id", nullable = false)
-    private Lemma lemma;
+    @Column(name = "lemma_id", nullable = false)
+    private Integer lemmaId;
 
     @Column(name = "lemma_rank", nullable = false)
     private Double rank;

@@ -1,5 +1,7 @@
 package com.skillbox.searchengine.entity;
 
+import org.hibernate.annotations.SQLInsert;
+
 import javax.persistence.*;
 
 @Entity
@@ -18,6 +20,11 @@ public class Lemma implements BaseEntity, BatchSavable, Unique{
 
     @Column(name = "lemma", nullable = false, length = 200, unique = true)
     private String lemma;
+
+    @Override
+    public String getHQLSelect() {
+        return String.format("FROM Lemma WHERE lemma = '%s'", lemma);
+    }
 
     @Override
     public String getFieldsAsSQL() {
@@ -75,6 +82,11 @@ public class Lemma implements BaseEntity, BatchSavable, Unique{
 
     @Override
     public String toString() {
-        return String.format("Lemma info: %s - %d", lemma, frequency);
+        return String.format("Lemma info: %d) %s (frequency = %d)", id, lemma, frequency);
+    }
+
+    @Override
+    public String getUniqueField() {
+        return lemma;
     }
 }

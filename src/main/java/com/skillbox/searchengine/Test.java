@@ -1,23 +1,42 @@
 package com.skillbox.searchengine;
 
 import com.skillbox.searchengine.entity.Lemma;
-import com.skillbox.searchengine.entity.Page;
 import com.skillbox.searchengine.entity.WebsiteIndex;
 import com.skillbox.searchengine.repository.CustomRepository;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
 
 
 public class Test {
     public static void main(String[] args) throws Exception{
-        String f_word = "\"тест\"";
-        String t_word = "т123ест123";
-        System.out.println(cleaner(f_word));
+        Lemma lemma = CustomRepository.findLemma("skillbox");
+        System.out.println(lemma);
     }
 
-    private static void check(String word) {
-        System.out.println( word.matches("[а-яА-Я0-9]*") );
-    }
+    private static void workingSaveOrUpdate() {
+        Session session = CustomRepository.getSessionFactory().openSession();
 
-    private static String cleaner(String word) {
-        return word.replaceAll("[^a-zA-Zа-яА-Я0-9]", "");
+        Lemma lemma = new Lemma();
+        lemma.setLemma("skillbox");
+        lemma.setFrequency(1);
+
+        Transaction transaction = null;
+        try {
+            transaction = session.beginTransaction();
+            session.save(lemma);
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            System.out.println("--Duplicate Entry--");
+            lemma = session.createQuery("From Lemma where lemma = 'skillbox'", Lemma.class).uniqueResult();
+            lemma.setFrequency(2);
+            transaction = session.beginTransaction();
+            session.update(lemma);
+            transaction.commit();
+        }
+
+        session.close();
     }
 }
