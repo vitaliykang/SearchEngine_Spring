@@ -1,14 +1,17 @@
 package com.skillbox.searchengine.entity;
 
-import org.hibernate.annotations.SQLInsert;
+import lombok.Getter;
+import lombok.Setter;
 
 import javax.persistence.*;
 
 @Entity
-@Table(name = "lemma")
-public class Lemma implements BaseEntity, BatchSavable, Unique{
-    private static final String SQL_PARAMS = "lemma (frequency, lemma) VALUES ";
+@Table(name = "lemma", uniqueConstraints = @UniqueConstraint(columnNames = {"lemma", "site_id"}))
+public class Lemma implements BaseEntity, BatchSavable, Comparable<Lemma>{
+    private static final String SQL_PARAMS = "lemma (frequency, lemma, site_id) VALUES ";
     private static final String ENDING = " ON DUPLICATE KEY UPDATE frequency = frequency + 1";
+
+    //todo add site to batch save
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,8 +21,12 @@ public class Lemma implements BaseEntity, BatchSavable, Unique{
     @Column(name = "frequency", nullable = false)
     private Integer frequency;
 
-    @Column(name = "lemma", nullable = false, length = 200, unique = true)
+    @Column(name = "lemma", nullable = false, length = 200)
     private String lemma;
+
+    @Getter @Setter
+    @Column(name = "site_id", nullable = false)
+    private Integer siteId;
 
     @Override
     public String getHQLSelect() {
@@ -28,7 +35,7 @@ public class Lemma implements BaseEntity, BatchSavable, Unique{
 
     @Override
     public String getFieldsAsSQL() {
-        return String.format("(%d, '%s')", frequency, lemma);
+        return String.format("(%d, '%s', %d)", frequency, lemma, siteId);
     }
 
     @Override
@@ -72,7 +79,7 @@ public class Lemma implements BaseEntity, BatchSavable, Unique{
 
         Lemma lemma1 = (Lemma) o;
 
-        return lemma.equals(lemma1.lemma);
+        return lemma.equals(lemma1.lemma) && siteId.equals(lemma1.siteId);
     }
 
     @Override
@@ -82,11 +89,11 @@ public class Lemma implements BaseEntity, BatchSavable, Unique{
 
     @Override
     public String toString() {
-        return String.format("Lemma info: %d) %s (frequency = %d)", id, lemma, frequency);
+        return lemma;
     }
 
     @Override
-    public String getUniqueField() {
-        return lemma;
+    public int compareTo(Lemma otherLemma) {
+        return frequency.compareTo(otherLemma.frequency);
     }
 }

@@ -2,6 +2,7 @@ package com.skillbox.searchengine.utils;
 
 import com.skillbox.searchengine.entity.Field;
 import com.skillbox.searchengine.entity.Lemma;
+import com.skillbox.searchengine.entity.Site;
 import com.skillbox.searchengine.repository.CustomRepository;
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.WrongCharaterException;
@@ -23,21 +24,20 @@ public class LemmaCounter {
         }
     }
 
-    private LemmaCounter(){};
-
+    private LemmaCounter(){}
 
     /**
      * Generates a hash map containing all lemmas and their respective rank
      * @param document Jsoup document
      * @return Map<Lemma, Double>
      */
-    public static Map<Lemma, Double> generateMap(Document document) {
+    public static Map<Lemma, Double> generateMap(Document document, Site site) {
         Map<Lemma, Double> result = new HashMap<>();
         List<Field> fields = CustomRepository.findAll(Field.class);
 
         fields.forEach(field -> {
             Elements elements = document.select(field.getSelector());
-            Map<Lemma, Integer> lemmaCount = countLemmas(elements.text());
+            Map<Lemma, Integer> lemmaCount = countLemmas(elements.text(), site);
 
             lemmaCount.forEach((lemma, count) -> {
                 double rank = count * field.getWeight();
@@ -56,7 +56,7 @@ public class LemmaCounter {
      * @param text in Russian language
      * @return map of lexemes in the text
      */
-    public static Map<Lemma, Integer> countLemmas(String text) {
+    public static Map<Lemma, Integer> countLemmas(String text, Site site) {
         Map<Lemma, Integer> result = new HashMap<>();
         String[] textArray = text.split(" ");
 
@@ -69,11 +69,11 @@ public class LemmaCounter {
             List<String> morphInfo = getMorphInfo(textArray[i]);
             for (String info : morphInfo) {
                 if (isWord(info)) {
-                    int index = info.indexOf('|');
-                    String word = index == -1 ? info : info.substring(0, index);
+                    String word = getWordFromMorphInfo(info);
                     Lemma lemma = new Lemma();
                     lemma.setLemma(word);
                     lemma.setFrequency(1);
+                    lemma.setSiteId(site.getId());
                     Integer count = result.putIfAbsent(lemma, 1);
                     if (count != null) {
                         result.replace(lemma, count + 1);
@@ -83,6 +83,14 @@ public class LemmaCounter {
         }
 
         return result;
+    }
+
+    /**
+     * Extracts the base word from provided morphInfo string
+     */
+    public static String getWordFromMorphInfo(String info) {
+        int index = info.indexOf('|');
+        return index == -1 ? info : info.substring(0, index);
     }
 
     /**
@@ -106,7 +114,7 @@ public class LemmaCounter {
      * @param word
      * @return list of strings containing morph info on the provided word
      */
-    private static List<String> getMorphInfo(String word) {
+    public static List<String> getMorphInfo(String word) {
         List<String> result = new ArrayList<>();
         word = word.toLowerCase(Locale.ROOT);
 

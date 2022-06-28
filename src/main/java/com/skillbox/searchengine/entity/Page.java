@@ -1,6 +1,9 @@
 package com.skillbox.searchengine.entity;
 
 import lombok.Getter;
+import lombok.Setter;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
 
 import javax.persistence.*;
 
@@ -23,6 +26,19 @@ public class Page implements BaseEntity{
     @Lob
     @Column(name = "content", nullable = false)
     private String content;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "site_id", nullable = false)
+    @Getter @Setter
+    private Site site;
+
+    /**
+     * Parses content and returns it as a Jsoup Document.
+     * @return content as a Jsoup Document.
+     */
+    public Document getDocument() {
+        return Jsoup.parse(content);
+    }
 
     //getters and setters
     public String getContent() {

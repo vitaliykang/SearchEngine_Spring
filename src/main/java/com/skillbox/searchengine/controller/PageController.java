@@ -15,30 +15,12 @@ public class PageController {
     @GetMapping(path="/")
     public String test() {
         String address = "https://skillbox.ru/";
-        ForkJoinPool pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors() - 1);
+        ForkJoinPool pool = new ForkJoinPool();
         Crawler crawler = new Crawler(List.of(address));
         pool.invoke(crawler);
 
         return "Done!";
     }
 
-//    @GetMapping(path="/")
-//    public String loadAll() {
-//        if (Crawler.getPages().size() > 0) {
-//            Crawler.setPages(new ArrayList<>());
-//        }
-//
-//        String address = "https://skillbox.ru/";
-//        ForkJoinPool pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors() - 1);
-//        Crawler crawler = new Crawler(List.of(address), pageRepository);
-//        pool.invoke(crawler);
-//
-//        List<Page> pages = Crawler.getPages();
-//
-//        BatchInsert<Page> pageBatchInsert = new BatchInsert<>(pages, jdbcTemplate);
-//        pageBatchInsert.save();
-//
-//        return "Done";
-//    }
 
 }

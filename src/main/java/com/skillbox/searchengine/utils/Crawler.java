@@ -1,9 +1,12 @@
 package com.skillbox.searchengine.utils;
 
 import com.skillbox.searchengine.entity.Field;
-import com.skillbox.searchengine.entity.Lemma;
 import com.skillbox.searchengine.entity.Page;
+import com.skillbox.searchengine.entity.Site;
 import com.skillbox.searchengine.repository.CustomRepository;
+import com.skillbox.searchengine.repository.IndexRepository;
+import com.skillbox.searchengine.repository.LemmaRepository;
+import com.skillbox.searchengine.repository.SiteRepository;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.Session;
@@ -14,11 +17,21 @@ import org.jsoup.select.Elements;
 
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;
 
 public class Crawler extends RecursiveAction {
+    //Contains pairs of [website url] - [set of unique links].
+    /*Each time a new instance of Crawler is executed, siteMap is checked if it contains url that was passed into the
+    crawler. If the url is present, all the links that are found by this crawler's instance are saved in the respective
+    links set.
+    */
+    private static Map<String, Set<String>> siteMap = new HashMap<>();
+
+    private static Set<String> allSites = new HashSet<>();
+
     private static HashSet<String> allLinks = new HashSet<>();
 
     @Getter @Setter
@@ -30,55 +43,62 @@ public class Crawler extends RecursiveAction {
     public Crawler(List<String> initAddress){
         this.initAddress = initAddress;
         children = new ArrayList<>();
-        allLinks.addAll(initAddress);
         fields = CustomRepository.findAll(Field.class);
+        synchronized (Crawler.class) {
+            allLinks.addAll(initAddress);
+        }
+    }
+
+    public Crawler(String address) {
+        this(List.of(address));
     }
 
     //main action
     private void process(List<String> list){
-        list.forEach(address -> {
+        list.forEach(url -> {
             Elements linksOnPage = new Elements();
             try {
-                //adding '/' to the end of the address
-                address = address.endsWith("/") || address.endsWith(".html") ?
-                        address : address + "/";
-
-                Connection connection = Jsoup.connect(address)
+                Connection connection = Jsoup.connect(url)
                         .userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6")
                         .referrer("http://www.google.com");
 
                 //main action
                 Session session = CustomRepository.getSessionFactory().openSession();
-                Document doc = connection.get();
+                Document document = connection.get();
                 Connection.Response response = connection.execute();
                 int statusCode = response.statusCode();
 
-                linksOnPage = doc.select("a[href]");
+                linksOnPage = document.select("a[href]");
+
+                //Retrieving site from the database using site name
+                AddressUtility addressUtility = new AddressUtility(url);
+                Site site = SiteRepository.get(addressUtility.getSiteName());
 
                 //New page database entry
                 Page page = new Page();
 
-                String path = extractPath(address);
+                String path = addressUtility.getPath();
 
-                System.out.println(address);
+                System.out.println(url);
                 page.setPath(path);
                 page.setCode(statusCode);
                 page.setContent(response.body());
+                page.setSite(site);
 
                 CustomRepository.save(page, session);
 
                 //extracting lemmas from given fields and saving them in repo
-                Map<Lemma, Double> lemmaMap = LemmaCounter.generateMap(doc);
-//                Map<Integer, Double> lemmaRanks = CustomRepository.saveLemmas(lemmaMap, session);
-                Map<Integer, Double> idRanks = CustomRepository.saveLemmas(lemmaMap);
-                CustomRepository.saveIndexes(page, idRanks);
+                Map<Integer, Double> idRanks = LemmaRepository.saveLemmas(document, site);
+
+                //saving indexes
+                IndexRepository.saveIndexes(page, idRanks);
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
             if (linksOnPage.size() > 0) {
-                String finalAddress = address;
+                String finalAddress = url;
                 linksOnPage.forEach(link -> {
                     String childAddress = link.attr("abs:href");
                     if (childAddress.startsWith(finalAddress)
@@ -93,24 +113,14 @@ public class Crawler extends RecursiveAction {
                             e.printStackTrace();
                         }
 
-                        allLinks.add(childAddress); //adding the child link address to the allLinks pool
+                        synchronized (Crawler.class) {
+                            allLinks.add(childAddress); //adding the child link address to the allLinks pool
+                        }
                         children.add(childAddress);
                     }
                 });
             }
         });
-    }
-
-    /**
-     *Extracts path from the provided web address
-     */
-    private String extractPath(String address) {
-        int index = 0;
-        for (int i = 0; i < 3; i++) {
-            index = address.indexOf('/', index + 1);
-        }
-        String path = address.substring(index);
-        return path;
     }
 
     @Override
@@ -139,5 +149,17 @@ public class Crawler extends RecursiveAction {
         subtasks.add(crawler2);
 
         return subtasks;
+    }
+
+    /**
+     *Extracts path from the provided web address
+     */
+    private String extractPath(String address) {
+        int index = 0;
+        for (int i = 0; i < 3; i++) {
+            index = address.indexOf('/', index + 1);
+        }
+        String path = address.substring(index);
+        return path;
     }
 }

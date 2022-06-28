@@ -41,4 +41,9 @@ public class WebsiteIndex implements BaseEntity{
         this.rank = rank;
     }
 
+    @Override
+    public String toString() {
+        return String.format("lemma_id: %d, page_id: %d, rank: %f", lemmaId, page.getId(), rank);
+    }
+
 }
