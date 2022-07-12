@@ -7,7 +7,7 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "site")
-public class Site implements BaseEntity{
+public class Site {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)

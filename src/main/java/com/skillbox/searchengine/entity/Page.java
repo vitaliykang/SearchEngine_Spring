@@ -1,5 +1,7 @@
 package com.skillbox.searchengine.entity;
 
+import com.skillbox.searchengine.repository.SiteRepository;
+import com.skillbox.searchengine.utils.AddressUtility;
 import lombok.Getter;
 import lombok.Setter;
 import org.jsoup.Jsoup;
@@ -24,13 +26,22 @@ public class Page implements BaseEntity{
     private Integer code;
 
     @Lob
-    @Column(name = "content", nullable = false)
+    @Column(name = "content")
     private String content;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site_id", nullable = false)
     @Getter @Setter
     private Site site;
+
+    public Page() {}
+
+    public Page(String url, int code) {
+        this.code = code;
+        AddressUtility addressUtility = new AddressUtility(url);
+        site = SiteRepository.get(url);
+        path = addressUtility.getPath();
+    }
 
     /**
      * Parses content and returns it as a Jsoup Document.

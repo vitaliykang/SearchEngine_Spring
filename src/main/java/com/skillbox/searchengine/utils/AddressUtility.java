@@ -8,6 +8,7 @@ public class AddressUtility {
     private String url;
 
     private String path;
+    //homepage address
     private String root;
     private String siteName;
 

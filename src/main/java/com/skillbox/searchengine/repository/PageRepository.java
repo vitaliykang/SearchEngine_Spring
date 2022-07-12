@@ -7,13 +7,24 @@ import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
 public class PageRepository {
-    private static SessionFactory sessionFactory = CustomRepository.getSessionFactory();
+    private static final SessionFactory sessionFactory = CustomRepository.getSessionFactory();
+
+    private PageRepository(){}
+
+    public static void save(Page page) {
+        CustomRepository.save(page);
+    }
+
+    public static void save(Page page, Session session) {
+        CustomRepository.save(page, session);
+    }
 
     public static Page get(Integer pageId) {
-        Page page;
+        Page page = null;
         Transaction transaction = null;
+        Session session = sessionFactory.openSession();
 
-        try (Session session = sessionFactory.openSession()) {
+        try {
             transaction = session.beginTransaction();
             Query<Page> query = session.createQuery("from Page p join fetch p.site where p.id = :id", Page.class);
             query.setParameter("id", pageId);
@@ -23,7 +34,9 @@ public class PageRepository {
             if (transaction != null) {
                 transaction.rollback();
             }
-            throw e;
+            e.printStackTrace();
+        } finally {
+            session.close();
         }
 
         return page;

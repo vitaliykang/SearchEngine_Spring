@@ -19,10 +19,14 @@ public class LemmaRepository {
     private static final SessionFactory sessionFactory = CustomRepository.getSessionFactory();
     private static final int BATCH_SIZE = 30;
 
+    private LemmaRepository(){}
+
     public static Lemma get(String lemmaStr, Integer siteId) {
-        Lemma result;
+        Lemma result = null;
         Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
+        Session session = sessionFactory.openSession();
+
+        try {
             transaction = session.beginTransaction();
             Query<Lemma> query = session.createQuery("from Lemma l where l.lemma = :lemma and l.siteId = :siteId", Lemma.class);
             query.setParameter("lemma", lemmaStr);
@@ -33,26 +37,11 @@ public class LemmaRepository {
             if (transaction != null) {
                 transaction.rollback();
             }
-            throw e;
+            e.printStackTrace();
+        } finally {
+            session.close();
         }
-        return result;
-    }
 
-    public static Lemma get(Integer id) {
-        Lemma result;
-        Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
-            transaction = session.beginTransaction();
-            Query<Lemma> query = session.createQuery("from Lemma l where l.id = :id", Lemma.class);
-            query.setParameter("id", id);
-            result = query.uniqueResult();
-            transaction.commit();
-        } catch (Exception e) {
-            if (transaction != null) {
-                transaction.rollback();
-            }
-            throw e;
-        }
         return result;
     }
 
@@ -86,9 +75,10 @@ public class LemmaRepository {
 
     //@param lemma - quasi-lemma, containing only String lemma value and siteId
     private static Integer findId(Lemma lemma) {
-        Lemma repoLemma;
+        Lemma repoLemma = null;
         Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
+        Session session = sessionFactory.openSession();
+        try {
             transaction = session.beginTransaction();
             Query<Lemma> query = session.createQuery("from Lemma l where l.lemma = :lemma and l.siteId = :siteId", Lemma.class);
             query.setParameter("lemma", lemma.getLemma());
@@ -99,9 +89,11 @@ public class LemmaRepository {
             if (transaction != null) {
                 transaction.rollback();
             }
-            throw e;
+            e.printStackTrace();
+        } finally {
+            session.close();
         }
-        return repoLemma.getId();
+        return repoLemma == null ? null : repoLemma.getId();
     }
 
     //change to private after testing
@@ -135,9 +127,10 @@ public class LemmaRepository {
             if (transaction != null) {
                 transaction.rollback();
             }
-            throw e;
+            e.printStackTrace();
+        } finally {
+            session.close();
         }
-        session.close();
     }
 
     private static <T extends BatchSavable> List<List<T>> splitList(List<T> list) {

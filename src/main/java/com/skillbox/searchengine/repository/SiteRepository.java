@@ -6,52 +6,104 @@ import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
-import java.io.FileWriter;
-import java.io.IOException;
+import java.time.Instant;
 
 public class SiteRepository {
     private static SessionFactory sessionFactory = CustomRepository.getSessionFactory();
 
-    public static Site get(String siteName) {
+    private SiteRepository(){}
+
+    public static void save(Site site) {
         Transaction transaction = null;
-        Site site = null;
-        try (Session session = sessionFactory.openSession()) {
+        Session session = sessionFactory.openSession();
+        try {
             transaction = session.beginTransaction();
-            Query<Site> query = session.createQuery("from Site s where s.name = :siteName", Site.class);
-            query.setParameter("siteName", siteName);
-            site = query.uniqueResult();
+            Query<Site> query = session.createQuery("from Site s where s.url = :url", Site.class);
+            query.setParameter("url", site.getUrl());
+            Site repoSite = query.uniqueResult();
+
+            if (repoSite == null) {
+                session.persist(site);
+            } else {
+                repoSite.setStatus(Site.Status.INDEXING);
+                repoSite.setStatusTime(Instant.now());
+            }
+
             transaction.commit();
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
             }
-//            throw e;
-            try (FileWriter writer = new FileWriter("src/main/resources/output.txt")) {
-                writer.write(e.getMessage());
-                writer.write("Site name: " + siteName);
-            } catch (IOException ioException) {
-
-            }
+            e.printStackTrace();
+        } finally {
+            session.close();
         }
-        return site;
     }
 
     public static Site get(Integer id) {
-        Site site = null;
+        Site result = null;
         Transaction transaction = null;
-        try (Session session = sessionFactory.openSession()) {
+        Session session = sessionFactory.openSession();
+        try {
             transaction = session.beginTransaction();
-            Query<Site> query = session.createQuery("from Site s where s.id = :id");
+            Query<Site> query = session.createQuery("from Site s where s.id = :id", Site.class);
             query.setParameter("id", id);
-            site = query.uniqueResult();
+            result = query.uniqueResult();
             transaction.commit();
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
             }
-            throw e;
+            e.printStackTrace();
+        } finally {
+            session.close();
         }
 
-        return site;
+        return result;
+    }
+
+    public static Site get(String url) {
+        Transaction  transaction = null;
+        Site result = null;
+        Session session = sessionFactory.openSession();
+
+        try {
+            transaction = session.beginTransaction();
+            Query<Site> query = session.createQuery("from Site s where s.url = :url", Site.class);
+            query.setParameter("url", url);
+            result = query.uniqueResult();
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+        } finally {
+            session.close();
+        }
+
+        return result;
+    }
+
+    public static void updateStatus(String url, Site.Status status) {
+        Transaction transaction = null;
+        Session session = sessionFactory.openSession();
+
+        try {
+            transaction = session.beginTransaction();
+            Query<Site> query = session.createQuery("from Site s where s.url = :url", Site.class);
+            query.setParameter("url", url);
+            Site site = query.uniqueResult();
+            site.setStatus(status);
+            site.setStatusTime(Instant.now());
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+        } finally {
+            session.close();
+        }
     }
 }

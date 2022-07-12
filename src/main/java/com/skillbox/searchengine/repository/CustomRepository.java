@@ -14,54 +14,57 @@ import java.sql.Connection;
 import java.util.*;
 
 public class CustomRepository {
-    private static final int BATCH_SIZE = 30;
-
     @Getter
-    private static SessionFactory sessionFactory;
-    private static Session uSession;
-    private static Connection uConnection;
+    private static final SessionFactory sessionFactory;
 
     static {
         StandardServiceRegistry registry = new StandardServiceRegistryBuilder()
                 .configure("hibernate.cfg.xml").build();
         Metadata metadata = new MetadataSources(registry).getMetadataBuilder().build();
         sessionFactory = metadata.getSessionFactoryBuilder().build();
-
-        uSession = sessionFactory.openSession();
-        uConnection = uSession.disconnect();
     }
 
     private CustomRepository() {
     }
 
-    public static <T extends BaseEntity> Integer save(T t, Session session) {
-        Transaction transaction = session.beginTransaction();
-        Integer id = (Integer) session.save(t);
-        transaction.commit();
-        return id;
-    }
-
-    public static <T extends BaseEntity> Integer save(T t) {
+    static <T extends BaseEntity> void save(T t, Session session) {
         Transaction transaction = null;
-        Integer id = null;
-        try (Session session = sessionFactory.openSession()) {
+        try {
             transaction = session.beginTransaction();
-            id = (Integer) session.save(t);
+            session.persist(t);
             transaction.commit();
         } catch (Exception e) {
             if (transaction != null) {
                 transaction.rollback();
             }
-            throw e;
+            e.printStackTrace();
+        } finally {
+            session.close();
         }
-
-        return id;
     }
 
-    public static <T extends BaseEntity> List<T> findAll(Class<T> tClass) {
+    static <T extends BaseEntity> void save(T t) {
+        Transaction transaction = null;
+        Session session = sessionFactory.openSession();
+        try {
+            transaction = session.beginTransaction();
+            session.persist(t);
+            transaction.commit();
+        } catch (Exception e) {
+            if (transaction != null) {
+                transaction.rollback();
+            }
+            e.printStackTrace();
+        } finally {
+            session.close();
+        }
+    }
+
+    static <T extends BaseEntity> List<T> findAll(Class<T> tClass) {
         Transaction transaction = null;
         List<T> result = null;
-        try (Session session = sessionFactory.openSession()) {
+        Session session = sessionFactory.openSession();
+        try {
             transaction = session.beginTransaction();
             String query = String.format("from %s", tClass.getSimpleName());
             result = session.createQuery(query, tClass).getResultList();
@@ -70,9 +73,10 @@ public class CustomRepository {
             if (transaction != null) {
                 transaction.rollback();
             }
-            throw e;
+            e.printStackTrace();
+        } finally {
+            session.close();
         }
         return result;
     }
-
 }

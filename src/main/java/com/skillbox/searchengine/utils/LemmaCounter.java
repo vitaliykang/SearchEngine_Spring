@@ -3,7 +3,7 @@ package com.skillbox.searchengine.utils;
 import com.skillbox.searchengine.entity.Field;
 import com.skillbox.searchengine.entity.Lemma;
 import com.skillbox.searchengine.entity.Site;
-import com.skillbox.searchengine.repository.CustomRepository;
+import com.skillbox.searchengine.repository.FieldRepository;
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.WrongCharaterException;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
@@ -33,7 +33,7 @@ public class LemmaCounter {
      */
     public static Map<Lemma, Double> generateMap(Document document, Site site) {
         Map<Lemma, Double> result = new HashMap<>();
-        List<Field> fields = CustomRepository.findAll(Field.class);
+        List<Field> fields = FieldRepository.findAll();
 
         fields.forEach(field -> {
             Elements elements = document.select(field.getSelector());
@@ -111,8 +111,8 @@ public class LemmaCounter {
     }
 
     /**
-     * @param word
-     * @return list of strings containing morph info on the provided word
+     * @param word, on which morph info has to be provided.
+     * @return list of strings containing morph info on the provided word.
      */
     public static List<String> getMorphInfo(String word) {
         List<String> result = new ArrayList<>();

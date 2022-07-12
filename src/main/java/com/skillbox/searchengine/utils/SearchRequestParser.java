@@ -17,9 +17,7 @@ public class SearchRequestParser {
 
     public SearchRequestParser(String request, String url) {
         this.request = request;
-        AddressUtility addressUtility = new AddressUtility(url);
-        String siteName = addressUtility.getSiteName();
-        site = SiteRepository.get(siteName);
+        site = SiteRepository.get(url);
     }
 
     public SearchRequestParser(String request, Site site) {
@@ -43,6 +41,7 @@ public class SearchRequestParser {
             foundPages.add(new FoundPage(entry.getKey(), entry.getValue(), sortedRequestLemmas));
         });
 
+        System.out.println("-------------****************----------------");
         foundPages.forEach(System.out::println);
     }
 

@@ -3,10 +3,7 @@ package com.skillbox.searchengine.utils;
 import com.skillbox.searchengine.entity.Field;
 import com.skillbox.searchengine.entity.Page;
 import com.skillbox.searchengine.entity.Site;
-import com.skillbox.searchengine.repository.CustomRepository;
-import com.skillbox.searchengine.repository.IndexRepository;
-import com.skillbox.searchengine.repository.LemmaRepository;
-import com.skillbox.searchengine.repository.SiteRepository;
+import com.skillbox.searchengine.repository.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.Session;
@@ -16,6 +13,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
@@ -38,12 +36,10 @@ public class Crawler extends RecursiveAction {
     private List<String> initAddress;
     @Getter @Setter
     private List<String> children;
-    private List<Field> fields;
 
     public Crawler(List<String> initAddress){
         this.initAddress = initAddress;
         children = new ArrayList<>();
-        fields = CustomRepository.findAll(Field.class);
         synchronized (Crawler.class) {
             allLinks.addAll(initAddress);
         }
@@ -54,25 +50,34 @@ public class Crawler extends RecursiveAction {
     }
 
     //main action
-    private void process(List<String> list){
-        list.forEach(url -> {
+    private void process(List<String> list) {
+        for (String url : list) {
             Elements linksOnPage = new Elements();
-            try {
-                Connection connection = Jsoup.connect(url)
-                        .userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6")
-                        .referrer("http://www.google.com");
+            Connection connection = Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6")
+                    .referrer("http://www.google.com");
 
-                //main action
-                Session session = CustomRepository.getSessionFactory().openSession();
-                Document document = connection.get();
-                Connection.Response response = connection.execute();
-                int statusCode = response.statusCode();
+            //main action
+            Session session = CustomRepository.getSessionFactory().openSession();
+            Document document = null;
+            Connection.Response response = null;
+            Integer statusCode = null;
+            try {
+                document = connection.get();
+                response = connection.execute();
+                statusCode = response.statusCode();
 
                 linksOnPage = document.select("a[href]");
 
                 //Retrieving site from the database using site name
                 AddressUtility addressUtility = new AddressUtility(url);
-                Site site = SiteRepository.get(addressUtility.getSiteName());
+
+                //todo replace with a proper logger
+                Site site = SiteRepository.get(addressUtility.getRoot());
+                if (site == null) {
+                    Logger.log(url);
+                    continue;
+                }
 
                 //New page database entry
                 Page page = new Page();
@@ -85,7 +90,7 @@ public class Crawler extends RecursiveAction {
                 page.setContent(response.body());
                 page.setSite(site);
 
-                CustomRepository.save(page, session);
+                PageRepository.save(page, session);
 
                 //extracting lemmas from given fields and saving them in repo
                 Map<Integer, Double> idRanks = LemmaRepository.saveLemmas(document, site);
@@ -93,34 +98,33 @@ public class Crawler extends RecursiveAction {
                 //saving indexes
                 IndexRepository.saveIndexes(page, idRanks);
 
+                if (linksOnPage.size() > 0) {
+                    String finalAddress = url;
+                    linksOnPage.forEach(link -> {
+                        String childAddress = link.attr("abs:href");
+                        if (childAddress.startsWith(finalAddress)
+                                && !childAddress.equalsIgnoreCase(finalAddress)
+                                && !allLinks.contains(childAddress)
+                                && !childAddress.startsWith("https://skillbox.ru/media/")
+                                && ( childAddress.endsWith("/") || childAddress.endsWith(".html") )) {
+
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+
+                            synchronized (Crawler.class) {
+                                allLinks.add(childAddress); //adding the child link address to the allLinks pool
+                            }
+                            children.add(childAddress);
+                        }
+                    });
+                }
             } catch (IOException e) {
-                e.printStackTrace();
+                PageRepository.save(new Page(url, 404));
             }
-
-            if (linksOnPage.size() > 0) {
-                String finalAddress = url;
-                linksOnPage.forEach(link -> {
-                    String childAddress = link.attr("abs:href");
-                    if (childAddress.startsWith(finalAddress)
-                            && !childAddress.equalsIgnoreCase(finalAddress)
-                            && !allLinks.contains(childAddress)
-                            && !childAddress.startsWith("https://skillbox.ru/media/")
-                            && ( childAddress.endsWith("/") || childAddress.endsWith(".html") )) {
-
-                        try {
-                            Thread.sleep(500);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-
-                        synchronized (Crawler.class) {
-                            allLinks.add(childAddress); //adding the child link address to the allLinks pool
-                        }
-                        children.add(childAddress);
-                    }
-                });
-            }
-        });
+        }
     }
 
     @Override
@@ -149,17 +153,5 @@ public class Crawler extends RecursiveAction {
         subtasks.add(crawler2);
 
         return subtasks;
-    }
-
-    /**
-     *Extracts path from the provided web address
-     */
-    private String extractPath(String address) {
-        int index = 0;
-        for (int i = 0; i < 3; i++) {
-            index = address.indexOf('/', index + 1);
-        }
-        String path = address.substring(index);
-        return path;
     }
 }
