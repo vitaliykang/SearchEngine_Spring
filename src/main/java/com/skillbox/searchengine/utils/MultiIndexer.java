@@ -33,13 +33,26 @@ public class MultiIndexer {
 
         //pinging the sites
         for (String url : websiteSet) {
-            Site site = new Site(url);
-            if (testConnection(url)) {
-                validSites.add(url);
-            } else {
-                site.setStatus(Site.Status.FAILED);
+            Site site = SiteRepository.get(url);
+            if (site == null) {
+                site = new Site(url);
+                if (testConnection(url)) {
+                    validSites.add(url);
+                } else {
+                    site.setStatus(Site.Status.FAILED);
+                }
+
+                SiteRepository.save(site);
             }
-            SiteRepository.save(site);
+            else {
+                if (testConnection(url)) {
+                    validSites.add(url);
+                    SiteRepository.updateStatus(url, Site.Status.INDEXING);
+                } else {
+                    SiteRepository.updateStatus(url, Site.Status.FAILED);
+                }
+            }
+
         }
 
         for (String url : validSites) {
@@ -60,7 +73,6 @@ public class MultiIndexer {
             code = connection.getResponseCode();
             // You can determine on HTTP return code received. 200 is success.
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } finally {
             if (connection != null) {
