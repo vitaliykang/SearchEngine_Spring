@@ -84,4 +84,8 @@ public class Page implements BaseEntity{
         this.id = id;
     }
 
+    @Override
+    public String toString() {
+        return String.format("%s - %d", path, site.getId());
+    }
 }

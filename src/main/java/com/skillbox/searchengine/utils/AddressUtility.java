@@ -1,6 +1,5 @@
 package com.skillbox.searchengine.utils;
 
-import com.skillbox.searchengine.entity.Site;
 import lombok.Data;
 
 @Data
@@ -9,7 +8,7 @@ public class AddressUtility {
 
     private String path;
     //homepage address
-    private String root;
+    private String homePageURL;
     private String siteName;
 
     public AddressUtility (String url) {
@@ -24,14 +23,14 @@ public class AddressUtility {
         }
 
         path = url.substring(index);
-        root = url.substring(0, index+1);
+        homePageURL = url.substring(0, index+1);
 
         //site name
         index = 0;
         for (int i = 0; i < 2; i++) {
-            index = root.indexOf('/', index + 1);
+            index = homePageURL.indexOf('/', index + 1);
         }
-        StringBuilder sb = new StringBuilder(root.substring(index+1));
+        StringBuilder sb = new StringBuilder(homePageURL.substring(index+1));
         sb.deleteCharAt(sb.length() - 1);
         siteName = sb.toString();
     }

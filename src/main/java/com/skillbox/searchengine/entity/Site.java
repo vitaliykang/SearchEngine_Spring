@@ -40,6 +40,18 @@ public class Site {
         setStatusTime(Instant.now());
     }
 
+    public Site(String url, String name) {
+        this.url = url;
+        this.name = name;
+        this.status = Status.INDEXING;
+        this.statusTime = Instant.now();
+    }
+
+    @Override
+    public String toString() {
+        return String.format("{%s - %s : %s}", name, url, status);
+    }
+
     public Integer getId() {
         return id;
     }

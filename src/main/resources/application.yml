@@ -1,0 +1,28 @@
+spring:
+  jpa:
+    database: MYSQL
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate.dialect: org.hibernate.dialect.MySQL5Dialect
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:3306/search_engine
+    username: root
+    password: wasd
+    driverClassName: com.mysql.cj.jdbc.Driver
+
+sites:
+  - url: http://bashorg.org
+    name: bashorg.org
+  - url: https://skillbox.ru
+    name: skillbox.ru
+  - url: https://bashorg.org
+    name: bashorg.org failed
+
+credentials:
+  user-agent: Mozilla/5.0 (Windows; U; WindowsNT 5.1; en-US; rv1.8.1.6) Gecko/20070725 Firefox/2.0.0.6
+  referrer: http://www.google.com
+
+web-interface: /admin
+

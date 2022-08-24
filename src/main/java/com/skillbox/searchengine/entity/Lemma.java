@@ -89,7 +89,7 @@ public class Lemma implements BaseEntity, BatchSavable, Comparable<Lemma>{
 
     @Override
     public String toString() {
-        return lemma;
+        return String.format("%d - %s - %d", siteId, lemma, frequency);
     }
 
     @Override

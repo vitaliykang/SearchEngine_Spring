@@ -1,19 +1,28 @@
 package com.skillbox.searchengine.utils;
 
 import com.skillbox.searchengine.FoundPage;
+import com.skillbox.searchengine.crudService.LemmaService;
 import com.skillbox.searchengine.entity.Lemma;
 import com.skillbox.searchengine.entity.Page;
 import com.skillbox.searchengine.entity.Site;
 import com.skillbox.searchengine.entity.WebsiteIndex;
 import com.skillbox.searchengine.repository.IndexRepository;
-import com.skillbox.searchengine.repository.LemmaRepository;
 import com.skillbox.searchengine.repository.SiteRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+@Service
 public class SearchRequestParser {
+    @Autowired
+    private LemmaService lemmaService;
     private String request;
     private Site site;
+
+    public SearchRequestParser() {
+
+    }
 
     public SearchRequestParser(String request, String url) {
         this.request = request;
@@ -129,7 +138,8 @@ public class SearchRequestParser {
         List<Lemma> requestLemmas = new ArrayList<>(LemmaCounter.countLemmas(request, site).keySet());
         List<Lemma> sortedLemmas = new ArrayList<>();
         for (Lemma requestLemma : requestLemmas){
-            Lemma repoLemma = LemmaRepository.get(requestLemma.getLemma(), requestLemma.getSiteId());
+//            Lemma repoLemma = LemmaRepository.get(requestLemma.getLemma(), requestLemma.getSiteId());
+            Lemma repoLemma = lemmaService.find(requestLemma.getLemma(), requestLemma.getSiteId());
             if (repoLemma == null) {
                 continue;
             } else {

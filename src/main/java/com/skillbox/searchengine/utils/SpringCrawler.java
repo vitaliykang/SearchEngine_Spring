@@ -1,26 +1,24 @@
 package com.skillbox.searchengine.utils;
 
-import com.skillbox.searchengine.entity.Field;
+import com.skillbox.searchengine.crudService.IndexService;
+import com.skillbox.searchengine.crudService.LemmaService;
+import com.skillbox.searchengine.crudService.PageService;
+import com.skillbox.searchengine.crudService.SiteService;
 import com.skillbox.searchengine.entity.Page;
 import com.skillbox.searchengine.entity.Site;
-import com.skillbox.searchengine.repository.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.Session;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
-
-import java.io.FileWriter;
 import java.io.IOException;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveAction;
 
-public class Crawler extends RecursiveAction {
+public class SpringCrawler extends RecursiveAction {
     //Contains pairs of [website url] - [set of unique links].
     /*Each time a new instance of Crawler is executed, siteMap is checked if it contains url that was passed into the
     crawler. If the url is present, all the links that are found by this crawler's instance are saved in the respective
@@ -37,15 +35,24 @@ public class Crawler extends RecursiveAction {
     @Getter @Setter
     private List<String> children;
 
-    public Crawler(List<String> initAddress){
+    @Getter @Setter
+    private static SiteService siteService;
+    @Getter @Setter
+    private static PageService pageService;
+    @Getter @Setter
+    private static LemmaService lemmaService;
+    @Getter @Setter
+    private static IndexService indexService;
+
+    public SpringCrawler(List<String> initAddress){
         this.initAddress = initAddress;
         children = new ArrayList<>();
-        synchronized (Crawler.class) {
+        synchronized (SpringCrawler.class) {
             allLinks.addAll(initAddress);
         }
     }
 
-    public Crawler(String address) {
+    public SpringCrawler(String address) {
         this(List.of(address));
     }
 
@@ -58,7 +65,6 @@ public class Crawler extends RecursiveAction {
                     .referrer("http://www.google.com");
 
             //main action
-            Session session = CustomRepository.getSessionFactory().openSession();
             Document document = null;
             Connection.Response response = null;
             Integer statusCode = null;
@@ -73,7 +79,7 @@ public class Crawler extends RecursiveAction {
                 AddressUtility addressUtility = new AddressUtility(url);
 
                 //todo replace with a proper logger
-                Site site = SiteRepository.get(addressUtility.getRoot());
+                Site site = siteService.find(addressUtility.getHomePageURL());
                 if (site == null) {
                     Logger.log(url);
                     continue;
@@ -90,13 +96,13 @@ public class Crawler extends RecursiveAction {
                 page.setContent(response.body());
                 page.setSite(site);
 
-                PageRepository.save(page, session);
+                pageService.save(page);
 
                 //extracting lemmas from given fields and saving them in repo
-                Map<Integer, Double> idRanks = LemmaRepository.saveLemmas(document, site);
+                Map<Integer, Double> idRanks = lemmaService.saveLemmas(document, site);
 
                 //saving indexes
-                IndexRepository.saveIndexes(page, idRanks);
+                indexService.saveIndexes(page, idRanks);
 
                 if (linksOnPage.size() > 0) {
                     String finalAddress = url;
@@ -114,7 +120,7 @@ public class Crawler extends RecursiveAction {
                                 e.printStackTrace();
                             }
 
-                            synchronized (Crawler.class) {
+                            synchronized (SpringCrawler.class) {
                                 allLinks.add(childAddress); //adding the child link address to the allLinks pool
                             }
                             children.add(childAddress);
@@ -122,7 +128,7 @@ public class Crawler extends RecursiveAction {
                     });
                 }
             } catch (IOException e) {
-                PageRepository.save(new Page(url, 404));
+                pageService.save(new Page(url, 404));
             }
         }
     }
@@ -130,28 +136,14 @@ public class Crawler extends RecursiveAction {
     @Override
     protected void compute() {
         if (initAddress.size() > 1) {
-            ForkJoinTask.invokeAll(splitTask());
         } else {
             process(initAddress);
 
             // if there are child links, set initial address to children and split the task
             if (this.children.size() > 0) {
                 this.setInitAddress(children);
-                ForkJoinTask.invokeAll(splitTask());
             }
         }
     }
 
-    private List<Crawler> splitTask(){
-        List<Crawler> subtasks = new ArrayList<>();
-        int half = initAddress.size() / 2;
-
-        Crawler crawler1 = new Crawler(initAddress.subList(0, half));
-        Crawler crawler2 = new Crawler(initAddress.subList(half, initAddress.size()));
-
-        subtasks.add(crawler1);
-        subtasks.add(crawler2);
-
-        return subtasks;
-    }
 }
